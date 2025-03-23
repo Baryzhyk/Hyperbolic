@@ -19,17 +19,26 @@ curl -fsSL -o "$LOGO_SCRIPT" "$LOGO_URL"
 chmod +x "$LOGO_SCRIPT"
 bash "$LOGO_SCRIPT"
 
-# Функція для відображення ASCII-заставки
+# Визначаємо кольори
+YELLOW="\e[33m"
+CYAN="\e[36m"
+BLUE="\e[34m"
+GREEN="\e[32m"
+RED="\e[31m"
+PINK="\e[35m"
+NC="\e[0m"
+
+# Функція анімації
 animate_loading() {
-    for ((i = 1; i <= 5; i++)); do
+    for ((i = 1; i <= 10; i++)); do
         printf "\r${GREEN}Завантажуємо меню${NC}."
-        sleep 0.3
+        sleep 0.5
         printf "\r${GREEN}Завантажуємо меню${NC}.."
-        sleep 0.3
+        sleep 0.5
         printf "\r${GREEN}Завантажуємо меню${NC}..."
-        sleep 0.3
+        sleep 0.5
         printf "\r${GREEN}Завантажуємо меню${NC}"
-        sleep 0.3
+        sleep 0.5
     done
     echo ""
 }
@@ -37,101 +46,110 @@ animate_loading() {
 animate_loading
 echo ""
 
-show_logo() {
-    echo -e "\e[34m"
-    figlet "Hyper Control"
-    echo -e "\e[0m"
-}
+# Вивід меню
+CHOICE=$(whiptail --title "Меню дій" \
+    --menu "Виберіть дію:" 15 50 5 \
+    "1" "Встановити бота" \
+    "2" "Оновити бота" \
+    "3" "Перевірка роботи бота" \
+    "4" "Перезапустити бота" \
+    "5" "Видалити бота" \
+    3>&1 1>&2 2>&3)
 
-# Функція для відображення меню
-show_menu() {
-    echo ""
-    echo "==============================="
-    echo "   Центр керування Hyper Bot   "
-    echo "==============================="
-    echo " 1. 🛠 Встановити бота"
-    echo " 2. ⬆ Оновити бота"
-    echo " 3. 🔎 Перевірити стан"
-    echo " 4. 🔄 Перезапустити бота"
-    echo " 5. 🗑 Видалити бота"
-    echo " 6. 🚪 Вихід"
-    echo "==============================="
-    echo -n "Оберіть дію (1-6): "
-}
+case $CHOICE in
+    1)
+        echo -e "${BLUE}Встановлення бота...${NC}"
 
-# Функція встановлення бота
-install_bot() {
-    echo "🛠 Встановлення бота..."
-    sleep 1
-    sudo apt update && sudo apt upgrade -y
-    sudo apt install -y python3 python3-venv python3-pip curl
+        sudo apt update && sudo apt upgrade -y
+        sudo apt install -y python3 python3-venv python3-pip curl
 
-    PROJECT_DIR="$HOME/hyperbolic"
-    mkdir -p "$PROJECT_DIR"
-    cd "$PROJECT_DIR" || exit 1
+        PROJECT_DIR="$HOME/hyperbolic"
+        mkdir -p "$PROJECT_DIR"
+        cd "$PROJECT_DIR" || exit 1
 
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install requests
-    deactivate
-    cd
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install requests
+        deactivate
+        cd
 
-    echo "✅ Бот встановлено!"
-    sleep 2
-}
+        # Завантаження бота
+        BOT_URL="https://raw.githubusercontent.com/Baryzhyk/Hyperbolic/refs/heads/main/bot.py"
+        curl -fsSL -o "$PROJECT_DIR/HyperChatter.py" "$BOT_URL"
 
-# Функція оновлення бота
-update_bot() {
-    echo "⬆ Оновлення бота..."
-    sleep 2
-    echo "✅ Оновлення завершено!"
-}
+        # Запит API-ключа
+        echo -e "${YELLOW}Введіть ваш API-ключ для Hyperbolic:${NC}"
+        read -r USER_API_KEY
+        sed -i "s/API_KEY = \"\$API_KEY\"/API_KEY = \"$USER_API_KEY\"/" "$PROJECT_DIR/HyperChatter.py"
 
-# Функція перевірки стану
-check_status() {
-    echo "🔎 Перевірка логів..."
-    sudo journalctl -u hyper-bot.service -f
-}
+        # Завантаження питань
+        QUESTIONS_URL="https://github.com/Baryzhyk/Hyperbolic/blob/main/Questions.txt"
+        curl -fsSL -o "$PROJECT_DIR/questions.txt" "$QUESTIONS_URL"
 
-# Функція перезапуску бота
-restart_bot() {
-    echo "🔄 Перезапуск бота..."
-    sudo systemctl restart hyper-bot.service
-    sudo journalctl -u hyper-bot.service -f
-}
+        USERNAME=$(whoami)
+        HOME_DIR=$(eval echo ~$USERNAME)
 
-# Функція видалення бота
-remove_bot() {
-    echo "🗑 Видалення бота..."
-    sudo systemctl stop hyper-bot.service
-    sudo systemctl disable hyper-bot.service
-    sudo rm /etc/systemd/system/hyper-bot.service
-    sudo systemctl daemon-reload
-    sleep 2
+        sudo bash -c "cat <<EOT > /etc/systemd/system/hyper-bot.service
+[Unit]
+Description=Hyperbolic API Bot Service
+After=network.target
 
-    rm -rf "$HOME/hyperbolic"
+[Service]
+User=$USERNAME
+WorkingDirectory=$HOME_DIR/hyperbolic
+ExecStart=$HOME_DIR/hyperbolic/venv/bin/python $HOME_DIR/hyperbolic/HyperChatter.py
+Restart=always
+Environment=PATH=$HOME_DIR/hyperbolic/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 
-    echo "✅ Бот видалено!"
-}
+[Install]
+WantedBy=multi-user.target
+EOT"
 
-# Основний цикл меню
-while true; do
-    clear
-    show_logo
-    show_menu
-    read -r CHOICE
+        sudo systemctl daemon-reload
+        sudo systemctl restart systemd-journald
+        sudo systemctl enable hyper-bot.service
+        sudo systemctl start hyper-bot.service
 
-    case $CHOICE in
-        1) install_bot ;;
-        2) update_bot ;;
-        3) check_status ;;
-        4) restart_bot ;;
-        5) remove_bot ;;
-        6) echo "🚪 Вихід..."; exit 0 ;;
-        *) echo "❌ Невірний вибір. Спробуйте ще раз." ;;
-    esac
+        echo -e "${YELLOW}Команда для перевірки логів:${NC}"
+        echo "sudo journalctl -u hyper-bot.service -f"
+        sleep 2
+        sudo journalctl -u hyper-bot.service -f
+        ;;
 
-    echo "Натисніть Enter, щоб продовжити..."
-    read -r
-done
+    2)
+        echo -e "${BLUE}Оновлення бота...${NC}"
+        sleep 2
+        echo -e "${GREEN}Оновлення бота поки не потрібне!${NC}"
+        ;;
+
+    3)
+        echo -e "${BLUE}Перегляд логів...${NC}"
+        sudo journalctl -u hyper-bot.service -f
+        ;;
+
+    4)
+        echo -e "${BLUE}Перезапуск бота...${NC}"
+        sudo systemctl restart hyper-bot.service
+        sudo journalctl -u hyper-bot.service -f
+        ;;
+        
+    5)
+        echo -e "${BLUE}Видалення бота...${NC}"
+
+        sudo systemctl stop hyper-bot.service
+        sudo systemctl disable hyper-bot.service
+        sudo rm /etc/systemd/system/hyper-bot.service
+        sudo systemctl daemon-reload
+        sleep 2
+
+        rm -rf "$HOME_DIR/hyperbolic"
+
+        echo -e "${GREEN}Бот успішно видалений!${NC}"
+        sleep 1
+        ;;
+    
+    *)
+        echo -e "${RED}Невірний вибір. Завершення програми.${NC}"
+        ;;
+esac
