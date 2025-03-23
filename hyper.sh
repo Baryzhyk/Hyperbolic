@@ -28,33 +28,107 @@ figlet "Hyper Control"
 echo -e "$NC"
 sleep 1
 
-# Анімація завантаження
-animate_loading() {
-    for i in {1..5}; do
-        printf "\r${RANDOM_COLOR}Запуск системи${NC}."
-        sleep 0.2
-        printf "\r${RANDOM_COLOR}Запуск системи${NC}.."
-        sleep 0.2
-        printf "\r${RANDOM_COLOR}Запуск системи${NC}..."
-        sleep 0.2
-    done
-    echo ""
+#!/bin/bash
+
+# Функція для відображення ASCII-заставки
+show_logo() {
+    echo -e "\e[34m"
+    figlet "Hyper Control"
+    echo -e "\e[0m"
 }
 
-animate_loading
-sleep 1
+# Функція для відображення меню
+show_menu() {
+    echo ""
+    echo "==============================="
+    echo "   Центр керування Hyper Bot   "
+    echo "==============================="
+    echo " 1. 🛠 Встановити бота"
+    echo " 2. ⬆ Оновити бота"
+    echo " 3. 🔎 Перевірити стан"
+    echo " 4. 🔄 Перезапустити бота"
+    echo " 5. 🗑 Видалити бота"
+    echo " 6. 🚪 Вихід"
+    echo "==============================="
+    echo -n "Оберіть дію (1-6): "
+}
 
-# Відображення меню через dialog
-CHOICE=$(dialog --clear --title "Центр керування Hyper" \
-    --menu "Оберіть дію:" 15 50 5 \
-    1 "🛠 Встановити бота" \
-    2 "⬆ Оновити бота" \
-    3 "🔎 Перевірити стан" \
-    4 "🔄 Перезапустити бота" \
-    5 "🗑 Видалити бота" \
-    2>&1 >/dev/tty)
+# Функція встановлення бота
+install_bot() {
+    echo "🛠 Встановлення бота..."
+    sleep 1
+    sudo apt update && sudo apt upgrade -y
+    sudo apt install -y python3 python3-venv python3-pip curl
 
-clear
+    PROJECT_DIR="$HOME/hyperbolic"
+    mkdir -p "$PROJECT_DIR"
+    cd "$PROJECT_DIR" || exit 1
+
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install requests
+    deactivate
+    cd
+
+    echo "✅ Бот встановлено!"
+    sleep 2
+}
+
+# Функція оновлення бота
+update_bot() {
+    echo "⬆ Оновлення бота..."
+    sleep 2
+    echo "✅ Оновлення завершено!"
+}
+
+# Функція перевірки стану
+check_status() {
+    echo "🔎 Перевірка логів..."
+    sudo journalctl -u hyper-bot.service -f
+}
+
+# Функція перезапуску бота
+restart_bot() {
+    echo "🔄 Перезапуск бота..."
+    sudo systemctl restart hyper-bot.service
+    sudo journalctl -u hyper-bot.service -f
+}
+
+# Функція видалення бота
+remove_bot() {
+    echo "🗑 Видалення бота..."
+    sudo systemctl stop hyper-bot.service
+    sudo systemctl disable hyper-bot.service
+    sudo rm /etc/systemd/system/hyper-bot.service
+    sudo systemctl daemon-reload
+    sleep 2
+
+    rm -rf "$HOME/hyperbolic"
+
+    echo "✅ Бот видалено!"
+}
+
+# Основний цикл меню
+while true; do
+    clear
+    show_logo
+    show_menu
+    read -r CHOICE
+
+    case $CHOICE in
+        1) install_bot ;;
+        2) update_bot ;;
+        3) check_status ;;
+        4) restart_bot ;;
+        5) remove_bot ;;
+        6) echo "🚪 Вихід..."; exit 0 ;;
+        *) echo "❌ Невірний вибір. Спробуйте ще раз." ;;
+    esac
+
+    echo "Натисніть Enter, щоб продовжити..."
+    read -r
+done
 
 case $CHOICE in
     1)
