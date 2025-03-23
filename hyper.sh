@@ -20,6 +20,23 @@ chmod +x "$LOGO_SCRIPT"
 bash "$LOGO_SCRIPT"
 
 # Функція для відображення ASCII-заставки
+animate_loading() {
+    for ((i = 1; i <= 5; i++)); do
+        printf "\r${GREEN}Завантажуємо меню${NC}."
+        sleep 0.3
+        printf "\r${GREEN}Завантажуємо меню${NC}.."
+        sleep 0.3
+        printf "\r${GREEN}Завантажуємо меню${NC}..."
+        sleep 0.3
+        printf "\r${GREEN}Завантажуємо меню${NC}"
+        sleep 0.3
+    done
+    echo ""
+}
+
+animate_loading
+echo ""
+
 show_logo() {
     echo -e "\e[34m"
     figlet "Hyper Control"
