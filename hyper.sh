@@ -84,7 +84,7 @@ case $CHOICE in
         sed -i "s/API_KEY = \"\$API_KEY\"/API_KEY = \"$USER_API_KEY\"/" "$PROJECT_DIR/HyperChatter.py"
 
         # Завантаження питань
-        QUESTIONS_URL="https://github.com/Baryzhyk/Hyperbolic/blob/main/Questions.txt"
+        QUESTIONS_URL="https://raw.githubusercontent.com/Baryzhyk/Hyperbolic/refs/heads/main/Questions.txt"
         curl -fsSL -o "$PROJECT_DIR/questions.txt" "$QUESTIONS_URL"
 
         USERNAME=$(whoami)
